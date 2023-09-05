@@ -1,0 +1,30 @@
+import pandas as pd
+from yahooquery import Ticker
+
+ticker = Ticker('GOOG')
+date = '2022-12-31'
+
+def fetch_financial_data():
+    financial_data = ticker.all_financial_data()
+    valuations = ticker.valuation_measures
+    return pd.concat([financial_data, valuations], axis=1, ignore_index=True)
+
+def calculate_wacc(row):
+    try:
+        v = row.get('TotalCapitalization')
+        rd = row.get('InterestExpense') / row.get('TotalDebt')
+        wacc = (row.get('MarketCap') / v * 0.07) + ((row.get('TotalDebt') / v * rd) * (1 - 0.4))
+        return wacc
+    except (ZeroDivisionError, TypeError):
+        return "Invalid data for WACC calculation"
+
+def BasicDCF():
+    data = fetch_financial_data()
+    row = data.loc[data['asOfDate'] == date].iloc[0]
+
+    wacc = calculate_wacc(row)
+    print(wacc)
+    print(ticker.all_financial_data().columns[75:])
+
+if __name__ == "__main__":
+    BasicDCF()
