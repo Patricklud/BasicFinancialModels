@@ -1,0 +1,75 @@
+import numpy as np
+from scipy.stats import norm
+from yahooquery import Ticker
+
+# Function to calculate option price using Black-Scholes model
+def black_scholes(S, K, T, r, sigma, option_type='call'):
+    """
+    Calculate the Black-Scholes option price.
+
+    Parameters:
+    S (float): Stock price
+    K (float): Strike price
+    T (float): Time to expiration in years
+    r (float): Risk-free rate
+    sigma (float): Volatility of the stock
+    option_type (str): Type of the option - 'call' or 'put'
+
+    Returns:
+    float: Option price
+    """
+    # Calculate d1 and d2 parameters
+    d1 = (np.log(S / K) + (r + 0.5 * sigma ** 2) * T) / (sigma * np.sqrt(T))
+    d2 = d1 - sigma * np.sqrt(T)
+
+    # Calculate option price
+    if option_type == 'call':
+        option_price = S * norm.cdf(d1) - K * np.exp(-r * T) * norm.cdf(d2)
+    elif option_type == 'put':
+        option_price = K * np.exp(-r * T) * norm.cdf(-d2) - S * norm.cdf(-d1)
+    else:
+        raise ValueError("Invalid option type. Use 'call' or 'put'.")
+
+    return option_price
+
+# Fetch data from Yahoo Finance
+def fetch_data(symbol):
+    """
+    Fetches stock data from Yahoo Finance.
+
+    Parameters:
+    symbol (str): Ticker symbol of the stock
+
+    Returns:
+    dict: Stock data including current price and historical volatility
+    """
+    ticker = Ticker(symbol)
+    info = ticker.history(period="1y")  # Get 1 year of stock data
+
+    # Calculate historical volatility
+    daily_returns = info['close'].pct_change()
+    sigma = daily_returns.std() * np.sqrt(252)  # Annualize the volatility
+
+    # Latest stock price
+    current_price = info['close'].iloc[-1]
+
+    return {'price': current_price, 'volatility': sigma}
+
+# Example usage
+if __name__ == "__main__":
+    symbol = 'AAPL'  # Apple Inc.
+    data = fetch_data(symbol)
+    price = data['price']
+    volatility = data['volatility']
+
+    # Example option parameters
+    strike_price = 150
+    time_to_expiration = 0.5  # 6 months
+    risk_free_rate = 0.01  # 1%
+
+    # Calculate option price
+    call_price = black_scholes(price, strike_price, time_to_expiration, risk_free_rate, volatility, 'call')
+    put_price = black_scholes(price, strike_price, time_to_expiration, risk_free_rate, volatility, 'put')
+
+    print(f"Call Price: {call_price}")
+    print(f"Put Price: {put_price}")
